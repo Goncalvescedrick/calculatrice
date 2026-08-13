@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculatrice Moderne</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .calculatrice {
+            width: 320px;
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .ecran {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: right;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+
+        .historique {
+            min-height: 20px;
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #affichage {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 36px;
+            font-weight: 600;
+            color: #212529;
+            text-align: right;
+            outline: none;
+        }
+
+        .boutons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        button {
+            padding: 18px 0;
+            font-size: 20px;
+            font-weight: 500;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            background-color: #f1f3f5;
+            color: #495057;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        button:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .operateur {
+            background-color: #ffe0b2;
+            color: #e65100;
+        }
+
+        .operateur:hover {
+            background-color: #ffd085;
+        }
+
+        .egal {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .egal:hover {
+            background-color: #0062cc;
+        }
+
+        .effacer {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+
+        .effacer:hover {
+            background-color: #ef9a9a;
+        }
+        
+        .span-2 {
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculatrice">
+        <div class="ecran">
+            <div class="historique" id="historique"></div>
+            <input type="text" id="affichage" readonly value="0">
+        </div>
+        <div class="boutons">
+            <button class="effacer span-2" onclick="effacer()">C</button>
+            <button class="effacer" onclick="effacerDernier()">⌫</button>
+            <button class="operateur" onclick="ajouterOperateur('/')">÷</button>
+            
+            <button onclick="ajouterNombre('7')">7</button>
+            <button onclick="ajouterNombre('8')">8</button>
+            <button onclick="ajouterNombre('9')">9</button>
+            <button class="operateur" onclick="ajouterOperateur('*')">×</button>
+            
+            <button onclick="ajouterNombre('4')">4</button>
+            <button onclick="ajouterNombre('5')">5</button>
+            <button onclick="ajouterNombre('6')">6</button>
+            <button class="operateur" onclick="ajouterOperateur('-')">-</button>
+            
+            <button onclick="ajouterNombre('1')">1</button>
+            <button onclick="ajouterNombre('2')">2</button>
+            <button onclick="ajouterNombre('3')">3</button>
+            <button class="operateur" onclick="ajouterOperateur('+')">+</button>
+            
+            <button onclick="ajouterNombre('0')" class="span-2">0</button>
+            <button onclick="ajouterDecimal()">.</button>
+            <button class="egal" onclick="calculer()">=</button>
+        </div>
+    </div>
+
+    <script>
+        const affichage = document.getElementById('affichage');
+        const historique = document.getElementById('historique');
+        let operandePrecedent = '';
+        let operandeActuel = '0';
+        let operateur = null;
+        let reinitialiserEcran = false;
+
+        function formaterNombre(nombre) {
+            if (nombre === '' || isNaN(nombre)) return nombre;
+            const stringNb = nombre.toString();
+            // on ne formate pas pendant la saisie des décimales pour éviter des bugs
+            if (stringNb.includes('.') && stringNb.endsWith('.')) return stringNb;
+            
+            const parties = stringNb.split('.');
+            parties[0] = parties[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            return parties.join('.');
+        }
+
+        function mettreAJourEcran() {
+            affichage.value = formaterNombre(operandeActuel);
+            
+            // Ajustement de la taille de la police si le nombre est trop long
+            if (affichage.value.length > 10) {
+                affichage.style.fontSize = '24px';
+            } else if (affichage.value.length > 7) {
+                affichage.style.fontSize = '28px';
+            } else {
+                affichage.style.fontSize = '36px';
+            }
+
+            if (operateur != null) {
+                const opSymbole = operateur === '*' ? '×' : (operateur === '/' ? '÷' : operateur);
+                historique.textContent = `${formaterNombre(operandePrecedent)} ${opSymbole}`;
+            } else {
+                historique.textContent = '';
+            }
+        }
+
+        function ajouterNombre(nombre) {
+            if (operandeActuel === '0' || reinitialiserEcran) {
+                operandeActuel = nombre;
+                reinitialiserEcran = false;
+            } else {
+                if (operandeActuel.length >= 15) return; // Limite de caractères
+                operandeActuel += nombre;
+            }
+            mettreAJourEcran();
+        }
+
+        function ajouterDecimal() {
+            if (reinitialiserEcran) {
+                operandeActuel = '0';
+                reinitialiserEcran = false;
+            }
+            if (!operandeActuel.includes('.')) {
+                operandeActuel += '.';
+            }
+            mettreAJourEcran();
+        }
+
+        function effacer() {
+            operandeActuel = '0';
+            operandePrecedent = '';
+            operateur = null;
+            mettreAJourEcran();
+        }
+
+        function effacerDernier() {
+            if (reinitialiserEcran) return;
+            operandeActuel = operandeActuel.slice(0, -1);
+            if (operandeActuel === '' || operandeActuel === '-') {
+                operandeActuel = '0';
+            }
+            mettreAJourEcran();
+        }
+
+        function calculerResultat() {
+            let resultat;
+            const prev = parseFloat(operandePrecedent);
+            const current = parseFloat(operandeActuel);
+
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch (operateur) {
+                case '+':
+                    resultat = prev + current;
+                    break;
+                case '-':
+                    resultat = prev - current;
+                    break;
+                case '*':
+                    resultat = prev * current;
+                    break;
+                case '/':
+                    if (current === 0) {
+                        alert("Erreur: Division par zéro");
+                        effacer();
+                        return;
+                    }
+                    resultat = prev / current;
+                    break;
+                default:
+                    return;
+            }
+            
+            // Arrondir pour éviter les problèmes de précision flottante
+            resultat = Math.round(resultat * 100000000) / 100000000;
+            operandeActuel = resultat.toString();
+            operateur = null;
+            operandePrecedent = '';
+            reinitialiserEcran = true;
+            mettreAJourEcran();
+        }
+
+        function ajouterOperateur(op) {
+            if (operandeActuel === '' && op === '-') {
+                operandeActuel = '-';
+                mettreAJourEcran();
+                return;
+            }
+            if (operandeActuel === '' || operandeActuel === '-') return;
+            
+            if (operandePrecedent !== '') {
+                calculerResultat();
+            }
+            
+            operateur = op;
+            operandePrecedent = operandeActuel;
+            reinitialiserEcran = true;
+            mettreAJourEcran();
+        }
+
+        function calculer() {
+            if (operateur === null || reinitialiserEcran) return;
+            calculerResultat();
+        }
+
+        // Support du clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                ajouterNombre(e.key);
+            }
+            if (e.key === '.') {
+                ajouterDecimal();
+            }
+            if (e.key === '=' || e.key === 'Enter') {
+                e.preventDefault();
+                calculer();
+            }
+            if (e.key === 'Backspace') {
+                effacerDernier();
+            }
+            if (e.key === 'Escape') {
+                effacer();
+            }
+            if (e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') {
+                ajouterOperateur(e.key);
+            }
+        });
+    </script>
+</body>
+</html>
